@@ -58,11 +58,21 @@ export async function POST(req: NextRequest) {
 
     const missingField = validateRequiredFields(body, [
       "staffId",
-      "serviceId",
       "bookingDate",
       "timeSlot",
     ]);
     if (missingField) return errorResponse(missingField, 422);
+
+    // Accept single serviceId OR array of serviceIds
+    const rawServiceIds: string[] = body.serviceIds?.length
+      ? body.serviceIds
+      : body.serviceId
+      ? [body.serviceId]
+      : [];
+
+    if (rawServiceIds.length === 0) {
+      return errorResponse("serviceId or serviceIds is required", 422);
+    }
 
     // customerId defaults to logged-in user for customers
     const customerId =
@@ -74,14 +84,21 @@ export async function POST(req: NextRequest) {
       return errorResponse("customerId is required", 422);
     }
 
+    // Calculate total amount from services
+    const Service = (await import("@/models/Service")).default;
+    const services = await Service.find({ _id: { $in: rawServiceIds } });
+    const totalAmount = services.reduce((sum, s) => sum + (s.price || 0), 0);
+
     const booking = await Booking.create({
-      salonId: auth.payload.salonId,
+      salonId: auth.payload.salonId!,
       customerId,
       staffId: body.staffId,
-      serviceId: body.serviceId,
+      serviceId: rawServiceIds[0],     // first service for backward compat
+      serviceIds: rawServiceIds,
       bookingDate: new Date(body.bookingDate),
       timeSlot: body.timeSlot,
       notes: body.notes,
+      totalAmount,
     });
 
     return successResponse(booking, "Booking created", 201);
