@@ -2,7 +2,7 @@
   "info": {
     "name": "SalonOS - Complete API Collection v2",
     "_postman_id": "saloon-os-v2",
-    "description": "All APIs for SalonOS. Variables: baseUrl, salon_token, admin_token, salonId, serviceId, bookingId, staffId, userId",
+    "description": "All APIs for SalonOS. Variables: baseUrl, salon_token, admin_token, salonId, serviceId, bookingId, staffId, userId, resetToken, paymentMethodId, notificationId, targetSalonId, conversationId, customerId",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -45,50 +45,42 @@
       "key": "userId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "resetToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentMethodId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "notificationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "targetSalonId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "conversationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
     {
       "name": "1. Auth",
       "item": [
-        {
-          "name": "Register Owner",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r=pm.response.json();if(r.data&&r.data.token){pm.collectionVariables.set('salon_token',r.data.token);pm.collectionVariables.set('salonId',r.data.salon._id);}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"ownerName\": \"Rajat Pradhan\",\n  \"email\": \"salon1@salon.com\",\n  \"password\": \"salon1@123\",\n  \"salonName\": \"Rajat's Salon\",\n  \"phone\": \"9876543210\",\n  \"address\": \"123 Main Street\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/register-owner",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "register-owner"
-              ]
-            }
-          }
-        },
         {
           "name": "Login (Owner / Staff / Customer)",
           "event": [
@@ -108,6 +100,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "body": {
@@ -128,6 +125,27 @@
           }
         },
         {
+          "name": "Send Registration OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Salon-ID", "value": "{{salonId}}", "description": "The MongoDB _id of the salon." }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer1@test.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/send-registration-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "send-registration-otp"]
+            },
+            "description": "Step 1 of registration. Validates that the email is not already registered for this salon, generates a 6-digit OTP and emails it. OTP is valid for 10 minutes."
+          }
+        },
+        {
           "name": "Register Customer (Salon App)",
           "event": [
             {
@@ -143,31 +161,20 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Salon-ID",
-                "value": "{{salonId}}",
-                "description": "The MongoDB _id of the salon. In production this comes from NEXT_PUBLIC_SALON_ID env var."
-              }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Salon-ID", "value": "{{salonId}}", "description": "The MongoDB _id of the salon. In production this comes from NEXT_PUBLIC_SALON_ID env var." }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Rajat Customer\",\n  \"email\": \"customer1@test.com\",\n  \"phone\": \"9000000001\",\n  \"password\": \"pass1234\"\n}"
+              "raw": "{\n  \"name\": \"Rajat Customer\",\n  \"email\": \"customer1@test.com\",\n  \"phone\": \"9000000001\",\n  \"password\": \"pass1234\",\n  \"otp\": \"123456\"\n}",
+              "options": { "raw": { "language": "json" } }
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/register-customer",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "register-customer"
-              ]
-            }
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register-customer"]
+            },
+            "description": "Step 2 of registration. Verifies the OTP sent to the email, then creates the account and returns a JWT token. Call Send Registration OTP first."
           }
         }
       ]
@@ -183,6 +190,11 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -210,6 +222,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "body": {
@@ -242,6 +259,11 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -279,6 +301,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "body": {
@@ -309,6 +336,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "body": {
@@ -336,6 +368,11 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -364,6 +401,11 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -401,6 +443,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "body": {
@@ -431,6 +478,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "body": {
@@ -463,6 +515,11 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -500,6 +557,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "body": {
@@ -615,6 +677,11 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -642,6 +709,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "body": {
@@ -673,6 +745,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "body": {
@@ -705,6 +782,11 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -842,6 +924,57 @@
       "name": "11. Admin - Salons",
       "item": [
         {
+          "name": "Create Salon (+ Owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r=pm.response.json();",
+                  "if(r.data&&r.data.salon){",
+                  "  pm.collectionVariables.set('salonId',r.data.salon._id);",
+                  "  console.log('salonId saved:', r.data.salon._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"salonName\": \"Rajat's Salon\",\n  \"ownerName\": \"Rajat Pradhan\",\n  \"email\": \"owner@salon.com\",\n  \"phone\": \"9876543210\",\n  \"address\": \"123 Main Street\",\n  \"password\": \"Owner@123\",\n  \"plan\": \"basic\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/salons",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "salons"
+              ]
+            }
+          }
+        },
+        {
           "name": "Get All Salons",
           "request": {
             "method": "GET",
@@ -960,6 +1093,129 @@
               ]
             }
           }
+        },
+        {
+          "name": "Add Service to Salon (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Haircut\",\n  \"price\": 299,\n  \"duration\": 30,\n  \"category\": \"Hair\",\n  \"description\": \"Classic haircut\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/salons/{{salonId}}/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "salons",
+                "{{salonId}}",
+                "services"
+              ]
+            },
+            "description": "Admin adds a service directly to a salon."
+          }
+        },
+        {
+          "name": "Add Staff to Salon (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Priya Sharma\",\n  \"phone\": \"9123456789\",\n  \"specialization\": \"Hair Stylist\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/salons/{{salonId}}/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "salons",
+                "{{salonId}}",
+                "staff"
+              ]
+            },
+            "description": "Admin adds a staff member directly to a salon."
+          }
+        },
+        {
+          "name": "Add Customer to Salon (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rabi Kumar\",\n  \"email\": \"rabi@salon.com\",\n  \"phone\": \"9000000001\",\n  \"password\": \"pass1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/salons/{{salonId}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "salons",
+                "{{salonId}}",
+                "customers"
+              ]
+            },
+            "description": "Admin registers a customer directly for a salon."
+          }
         }
       ]
     },
@@ -1065,7 +1321,7 @@
       ]
     },
     {
-      "name": "�� Auth - Password Reset",
+      "name": "13. Auth - Password Reset",
       "item": [
         {
           "name": "Forgot Password",
@@ -1156,7 +1412,7 @@
       ]
     },
     {
-      "name": "💰 Bookings - Pay & Review",
+      "name": "14. Bookings - Pay & Review",
       "item": [
         {
           "name": "Pay for Booking",
@@ -1165,7 +1421,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1198,7 +1459,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1227,7 +1493,7 @@
       ]
     },
     {
-      "name": "💳 Payment Methods",
+      "name": "15. Payment Methods",
       "item": [
         {
           "name": "List Payment Methods",
@@ -1236,7 +1502,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1259,7 +1530,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1291,7 +1567,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1315,7 +1596,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1344,7 +1630,7 @@
       ]
     },
     {
-      "name": "⭐ Reviews",
+      "name": "16. Reviews",
       "item": [
         {
           "name": "My Reviews",
@@ -1353,7 +1639,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1405,7 +1696,7 @@
       ]
     },
     {
-      "name": "❤️ Favourites",
+      "name": "17. Favourites",
       "item": [
         {
           "name": "List Favourites",
@@ -1414,7 +1705,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1437,7 +1733,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1461,7 +1762,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1481,7 +1787,7 @@
       ]
     },
     {
-      "name": "🔔 Notifications",
+      "name": "18. Notifications",
       "item": [
         {
           "name": "List Notifications",
@@ -1490,7 +1796,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1513,7 +1824,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1542,7 +1858,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1567,7 +1888,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1588,7 +1914,7 @@
       ]
     },
     {
-      "name": "💬 Messages",
+      "name": "19. Messages",
       "item": [
         {
           "name": "List Conversations",
@@ -1597,7 +1923,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1619,7 +1950,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1650,7 +1986,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{ownerToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1681,7 +2022,12 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{userToken}}"
+                "value": "Bearer {{salon_token}}"
+              },
+              {
+                "key": "X-Salon-ID",
+                "value": "{{salonId}}",
+                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
               }
             ],
             "url": {
@@ -1695,6 +2041,239 @@
                 "{{conversationId}}"
               ]
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "20. Admin - Bookings",
+      "item": [
+        {
+          "name": "Get All Bookings (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/bookings?page=1&limit=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "bookings"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "salonId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "date",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List all bookings across all salons. Admin only."
+          }
+        },
+        {
+          "name": "Get Booking Detail (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/bookings/{{bookingId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "bookings",
+                "{{bookingId}}"
+              ]
+            },
+            "description": "Get a single booking by ID. Admin only."
+          }
+        },
+        {
+          "name": "Create Booking (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"salonId\": \"{{salonId}}\",\n  \"customerId\": \"{{customerId}}\",\n  \"serviceId\": \"{{serviceId}}\",\n  \"staffId\": \"{{staffId}}\",\n  \"bookingDate\": \"2025-02-15\",\n  \"timeSlot\": \"10:00 AM\",\n  \"notes\": \"Admin-created booking\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/bookings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "bookings"
+              ]
+            },
+            "description": "Create a booking for any salon as admin."
+          }
+        },
+        {
+          "name": "Update Booking (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"confirmed\",\n  \"paymentStatus\": \"paid\",\n  \"notes\": \"Updated by admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/bookings/{{bookingId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "bookings",
+                "{{bookingId}}"
+              ]
+            },
+            "description": "Update booking status, timeSlot, notes or paymentStatus. Admin only."
+          }
+        },
+        {
+          "name": "Delete Booking (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/bookings/{{bookingId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "bookings",
+                "{{bookingId}}"
+              ]
+            },
+            "description": "Permanently delete a booking. Admin only."
+          }
+        }
+      ]
+    },
+    {
+      "name": "21. Admin - Analytics",
+      "item": [
+        {
+          "name": "Get Analytics (month)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics?period=month",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "analytics"],
+              "query": [
+                { "key": "period", "value": "month", "description": "day | week | month | year | custom" },
+                { "key": "salonId", "value": "", "disabled": true, "description": "Filter by salon ObjectId" },
+                { "key": "from", "value": "", "disabled": true, "description": "Required for custom period (YYYY-MM-DD)" },
+                { "key": "to",   "value": "", "disabled": true, "description": "Required for custom period (YYYY-MM-DD)" }
+              ]
+            },
+            "description": "Returns KPI summary, time-series, status/payment breakdown, top salons, top staff, and popular time slots."
+          }
+        },
+        {
+          "name": "Get Analytics – Custom Range",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics?period=custom&from=2024-01-01&to=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "analytics"],
+              "query": [
+                { "key": "period", "value": "custom" },
+                { "key": "from",   "value": "2024-01-01" },
+                { "key": "to",     "value": "2024-12-31" }
+              ]
+            },
+            "description": "Custom date range analytics. Both from and to are required when period=custom."
           }
         }
       ]

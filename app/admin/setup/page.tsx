@@ -65,28 +65,28 @@ export default function AdminSetupPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-rose-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-          <div className="bg-gradient-to-r from-rose-700 to-red-800 px-8 py-8 text-white text-center">
+          <div className="bg-gradient-to-r from-violet-700 to-violet-800 px-8 py-8 text-white text-center">
             <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center mx-auto mb-4">
               <ShieldCheck size={28} className="text-white" />
             </div>
             <h1 className="text-2xl font-bold">Admin Setup</h1>
-            <p className="text-rose-200 text-sm mt-1">Create super-admin account</p>
+            <p className="text-violet-200 text-sm mt-1">Create super-admin account</p>
           </div>
 
           <div className="px-8 py-8">
             {alreadyExists ? (
               <div className="text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center mx-auto">
-                  <ShieldCheck size={28} className="text-rose-600" />
+                <div className="w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center mx-auto">
+                  <ShieldCheck size={28} className="text-violet-600" />
                 </div>
                 <h2 className="text-lg font-bold text-slate-900">
                   Admin Already Configured
@@ -96,7 +96,7 @@ export default function AdminSetupPage() {
                   is allowed for security.
                 </p>
                 <Button
-                  className="w-full bg-rose-700 hover:bg-rose-800 focus:ring-rose-500"
+                  className="w-full bg-violet-700 hover:bg-violet-800 focus:ring-violet-500"
                   onClick={() => router.push("/admin/login")}
                 >
                   Go to Admin Login
@@ -146,7 +146,7 @@ export default function AdminSetupPage() {
                         setForm({ ...form, password: e.target.value })
                       }
                       placeholder="Min. 8 characters"
-                      className="w-full pl-10 pr-10 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      className="w-full pl-10 pr-10 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                     />
                     <button
                       type="button"
@@ -172,7 +172,7 @@ export default function AdminSetupPage() {
                 <Button
                   type="submit"
                   size="lg"
-                  className="w-full bg-rose-700 hover:bg-rose-800 focus:ring-rose-500 mt-2"
+                  className="w-full bg-violet-700 hover:bg-violet-800 focus:ring-violet-500 mt-2"
                   loading={submitting}
                 >
                   Create Admin Account

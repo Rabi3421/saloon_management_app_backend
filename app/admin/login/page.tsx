@@ -50,16 +50,16 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-rose-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           {/* Header band */}
-          <div className="bg-gradient-to-r from-rose-700 to-red-800 px-8 py-8 text-white text-center">
+          <div className="bg-gradient-to-r from-violet-700 to-violet-800 px-8 py-8 text-white text-center">
             <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center mx-auto mb-4">
               <ShieldCheck size={28} className="text-white" />
             </div>
             <h1 className="text-2xl font-bold">Super Admin</h1>
-            <p className="text-rose-200 text-sm mt-1">SalonOS Control Panel</p>
+            <p className="text-violet-200 text-sm mt-1">SalonOS Control Panel</p>
           </div>
 
           <form onSubmit={handleLogin} className="px-8 py-8 space-y-5">
@@ -95,7 +95,7 @@ export default function AdminLoginPage() {
                   }
                   placeholder="••••••••"
                   autoComplete="current-password"
-                  className="w-full pl-10 pr-10 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  className="w-full pl-10 pr-10 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
                 <button
                   type="button"
@@ -110,7 +110,7 @@ export default function AdminLoginPage() {
             <Button
               type="submit"
               size="lg"
-              className="w-full bg-rose-700 hover:bg-rose-800 focus:ring-rose-500 mt-2"
+              className="w-full bg-violet-700 hover:bg-violet-800 focus:ring-violet-500 mt-2"
               loading={loading}
             >
               Sign In to Admin Panel
@@ -120,7 +120,7 @@ export default function AdminLoginPage() {
               No account?{" "}
               <a
                 href="/admin/setup"
-                className="text-rose-600 hover:underline font-medium"
+                className="text-violet-600 hover:underline font-medium"
               >
                 First-time setup →
               </a>

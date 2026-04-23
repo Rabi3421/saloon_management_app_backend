@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import Otp from "@/models/Otp";
+import { sendOtpEmail } from "@/lib/mailer";
 import { successResponse, errorResponse } from "@/lib/apiHelpers";
 
 /**
@@ -32,11 +33,9 @@ export async function POST(req: NextRequest) {
 
     await Otp.create({ email: email.toLowerCase(), otp, expiresAt });
 
-    // ⚠️  Replace this with your real email sending logic:
-    // await sendEmail({ to: email, subject: "Your OTP", body: `Your OTP is: ${otp}` });
-    console.log(`[OTP] ${email} → ${otp} (expires ${expiresAt.toISOString()})`);
+    await sendOtpEmail(email.toLowerCase(), otp, "password-reset");
 
-    return successResponse({ otp_hint: otp }, "OTP sent successfully");
+    return successResponse(null, "OTP sent to your email.");
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal server error";
     return errorResponse(message, 500);

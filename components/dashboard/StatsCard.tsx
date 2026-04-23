@@ -5,7 +5,7 @@ interface StatsCardProps {
   label: string;
   value: string | number;
   icon: React.ReactNode;
-  color?: "indigo" | "emerald" | "amber" | "rose" | "purple" | "blue";
+  color?: "indigo" | "emerald" | "amber" | "violet" | "purple" | "blue";
   sub?: string;
 }
 
@@ -25,10 +25,10 @@ const colorMap = {
     icon: "bg-amber-100 text-amber-600",
     value: "text-amber-600",
   },
-  rose: {
-    bg: "bg-rose-50",
-    icon: "bg-rose-100 text-rose-600",
-    value: "text-rose-600",
+  violet: {
+    bg: "bg-violet-50",
+    icon: "bg-violet-100 text-violet-600",
+    value: "text-violet-600",
   },
   purple: {
     bg: "bg-purple-50",

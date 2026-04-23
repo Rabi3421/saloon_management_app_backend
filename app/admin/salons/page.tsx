@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, ChevronDown, Eye, Pencil, Power } from "lucide-react";
+import { Search, ChevronDown, Eye, Pencil, Power, Plus, Copy, Check } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
@@ -43,6 +43,13 @@ export default function AdminSalonsPage() {
   const [editForm, setEditForm] = useState<Partial<Salon>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Create salon modal
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ salonName: "", ownerName: "", email: "", phone: "", address: "", password: "", plan: "basic" });
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [copied, setCopied] = useState("");
 
   const fetchSalons = (q?: string, plan?: string, active?: string) => {
     setLoading(true);
@@ -105,12 +112,34 @@ export default function AdminSalonsPage() {
     }
   };
 
+  const handleCreate = async () => {
+    setCreateError("");
+    setCreating(true);
+    try {
+      await adminApi.post("/api/admin/salons", createForm);
+      setCreateOpen(false);
+      setCreateForm({ salonName: "", ownerName: "", email: "", phone: "", address: "", password: "", plan: "basic" });
+      fetchSalons();
+    } catch (e: unknown) {
+      setCreateError(e instanceof Error ? e.message : "Error creating salon");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(text);
+    setTimeout(() => setCopied(""), 2000);
+  };
+
   return (
     <div>
       <AdminHeader title="All Salons" />
       <div className="p-6 space-y-4">
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3">
+        {/* Filters + New button */}
+        <div className="flex flex-wrap gap-3 items-center justify-between">
+          <div className="flex flex-wrap gap-3 items-center">
           <Input
             placeholder="Search salons..."
             value={search}
@@ -128,7 +157,7 @@ export default function AdminSalonsPage() {
                 setPlanFilter(e.target.value);
                 fetchSalons(search, e.target.value, activeFilter);
               }}
-              className="appearance-none pl-3 pr-8 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+              className="appearance-none pl-3 pr-8 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
             >
               <option value="">All Plans</option>
               <option value="basic">Basic</option>
@@ -143,7 +172,7 @@ export default function AdminSalonsPage() {
                 setActiveFilter(e.target.value);
                 fetchSalons(search, planFilter, e.target.value);
               }}
-              className="appearance-none pl-3 pr-8 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+              className="appearance-none pl-3 pr-8 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
             >
               <option value="">All Status</option>
               <option value="true">Active</option>
@@ -151,6 +180,10 @@ export default function AdminSalonsPage() {
             </select>
             <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
+          </div>
+          <Button onClick={() => setCreateOpen(true)} className="bg-violet-700 hover:bg-violet-800 focus:ring-violet-500 flex items-center gap-2">
+            <Plus size={15} /> New Salon
+          </Button>
         </div>
 
         {error && <p className="text-sm text-red-500 bg-red-50 px-4 py-2 rounded-xl">{error}</p>}
@@ -165,7 +198,7 @@ export default function AdminSalonsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50">
-                    {["Salon", "Owner", "Plan", "Users", "Bookings", "Services", "Status", "Actions"].map((h) => (
+                    {["Salon", "Salon ID", "Owner", "Plan", "Users", "Bookings", "Services", "Status", "Actions"].map((h) => (
                       <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                         {h}
                       </th>
@@ -178,6 +211,16 @@ export default function AdminSalonsPage() {
                       <td className="px-5 py-4">
                         <p className="font-semibold text-slate-900">{s.name}</p>
                         <p className="text-xs text-slate-400">{s.email}</p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <button
+                          onClick={() => copyToClipboard(s._id)}
+                          className="flex items-center gap-1.5 font-mono text-xs text-slate-500 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg transition-colors"
+                          title="Copy Salon ID"
+                        >
+                          {s._id.slice(-8)}
+                          {copied === s._id ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                        </button>
                       </td>
                       <td className="px-5 py-4">
                         <p className="text-slate-700">{s.ownerName}</p>
@@ -232,6 +275,38 @@ export default function AdminSalonsPage() {
         <p className="text-xs text-slate-400">{salons.length} salon(s) found</p>
       </div>
 
+      {/* Create Salon Modal */}
+      <Modal isOpen={createOpen} onClose={() => { setCreateOpen(false); setCreateError(""); }} title="Create New Salon" size="md">
+        <div className="space-y-4">
+          {createError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{createError}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Salon Name" value={createForm.salonName} onChange={(e) => setCreateForm({ ...createForm, salonName: e.target.value })} />
+            <Input label="Owner Name" value={createForm.ownerName} onChange={(e) => setCreateForm({ ...createForm, ownerName: e.target.value })} />
+          </div>
+          <Input label="Email" type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Phone" value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} />
+            <Input label="Password" type="password" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} />
+          </div>
+          <Input label="Address" value={createForm.address} onChange={(e) => setCreateForm({ ...createForm, address: e.target.value })} />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Plan</label>
+            <select
+              value={createForm.plan}
+              onChange={(e) => setCreateForm({ ...createForm, plan: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
+            >
+              <option value="basic">Basic</option>
+              <option value="premium">Premium</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} loading={creating} className="bg-violet-700 hover:bg-violet-800 focus:ring-violet-500">Create Salon</Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Edit Modal */}
       <Modal isOpen={!!editModal} onClose={() => setEditModal(null)} title="Edit Salon" size="md">
         <div className="space-y-4">
@@ -243,7 +318,7 @@ export default function AdminSalonsPage() {
             <select
               value={editForm.plan || "basic"}
               onChange={(e) => setEditForm({ ...editForm, plan: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
             >
               <option value="basic">Basic</option>
               <option value="premium">Premium</option>
@@ -255,12 +330,12 @@ export default function AdminSalonsPage() {
               value={editForm.address || ""}
               onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
             />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => setEditModal(null)}>Cancel</Button>
-            <Button onClick={handleSave} loading={saving} className="bg-rose-700 hover:bg-rose-800 focus:ring-rose-500">Save Changes</Button>
+            <Button onClick={handleSave} loading={saving} className="bg-violet-700 hover:bg-violet-800 focus:ring-violet-500">Save Changes</Button>
           </div>
         </div>
       </Modal>

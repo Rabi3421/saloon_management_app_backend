@@ -19,6 +19,26 @@ export function authenticate(
 
   try {
     const payload = verifyToken(token);
+
+    // ── Salon isolation guard ────────────────────────────────────────────────
+    // Admin accounts (salonId: null) are exempt — they operate across salons.
+    // For every other role, the salonId baked into the JWT must match the
+    // X-Salon-ID header sent by the client app.  This prevents a user who
+    // registered with Salon A from calling Salon B's deployed instance.
+    if (payload.role !== "admin" && payload.salonId !== null) {
+      const headerSalonId = req.headers.get("x-salon-id");
+      if (!headerSalonId) {
+        return errorResponse("X-Salon-ID header is required", 400);
+      }
+      if (headerSalonId !== payload.salonId) {
+        return errorResponse(
+          "Access denied: you are not a member of this salon",
+          403
+        );
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     return { payload };
   } catch {
     return errorResponse("Invalid or expired token", 401);

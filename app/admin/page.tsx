@@ -79,7 +79,7 @@ export default function AdminOverviewPage() {
                 label="Total Salons"
                 value={stats.salons.total}
                 icon={<Store size={22} />}
-                color="rose"
+                color="violet"
                 sub={`${stats.salons.active} active`}
               />
               <StatsCard
@@ -108,7 +108,7 @@ export default function AdminOverviewPage() {
               <StatsCard label="Pending" value={stats.bookings.pending} icon={<Clock size={20} />} color="amber" />
               <StatsCard label="Confirmed" value={stats.bookings.confirmed} icon={<TrendingUp size={20} />} color="blue" />
               <StatsCard label="Completed" value={stats.bookings.completed} icon={<CheckCircle size={20} />} color="emerald" />
-              <StatsCard label="Cancelled" value={stats.bookings.cancelled} icon={<XCircle size={20} />} color="rose" />
+              <StatsCard label="Cancelled" value={stats.bookings.cancelled} icon={<XCircle size={20} />} color="violet" />
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -116,7 +116,7 @@ export default function AdminOverviewPage() {
               <Card>
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                   <h2 className="text-base font-semibold text-slate-900">Recent Salons</h2>
-                  <a href="/admin/salons" className="text-xs text-rose-600 hover:underline font-medium">View all →</a>
+                  <a href="/admin/salons" className="text-xs text-violet-600 hover:underline font-medium">View all →</a>
                 </div>
                 <div className="divide-y divide-slate-50">
                   {stats.recentSalons.map((s) => (

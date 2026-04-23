@@ -21,20 +21,32 @@ export async function POST(req: NextRequest) {
 
     const { email, password } = body;
 
-    // If the request comes from a specific salon frontend, scope login to that salon only
-    const salonHeader = req.headers.get("X-Salon-ID");
+    // X-Salon-ID is required for all non-admin logins.
+    // This prevents a user from one salon logging in via another salon's app.
+    const salonHeader = req.headers.get("x-salon-id");
 
     // Find user and include password (excluded by default via toJSON)
     const userQuery: Record<string, unknown> = { email: email.toLowerCase() };
-    // Scope to salon if header is present (customer/staff login from a salon app)
+
+    // Scope to salon when header is present (customer/staff/owner login)
     if (salonHeader) {
       userQuery.salonId = salonHeader;
-      userQuery.role = { $in: ["customer", "staff"] };
+      userQuery.role = { $in: ["customer", "staff", "owner"] };
+    }
+    // No header → only admin can log in (admin has salonId: null)
+    else {
+      userQuery.salonId = null;
+      userQuery.role = "admin";
     }
 
     const user = await User.findOne(userQuery).select("+password");
 
     if (!user || !user.isActive) {
+      return errorResponse("Invalid credentials", 401);
+    }
+
+    // Extra guard: ensure the user actually belongs to the requested salon
+    if (salonHeader && user.salonId && String(user.salonId) !== salonHeader) {
       return errorResponse("Invalid credentials", 401);
     }
 
