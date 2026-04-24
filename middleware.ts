@@ -6,7 +6,7 @@ const DASHBOARD_PROTECTED = "/dashboard";
 const ADMIN_PROTECTED = "/admin";
 const ADMIN_LOGIN = "/admin/login";
 const ADMIN_SETUP = "/admin/setup";
-const AUTH_PAGES = ["/login", "/register"];
+const AUTH_PAGES = ["/register"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -45,8 +45,7 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
+    const loginUrl = new URL("/admin/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
 

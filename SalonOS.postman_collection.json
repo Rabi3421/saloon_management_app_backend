@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "SalonOS - Complete API Collection v2",
-    "_postman_id": "saloon-os-v2",
-    "description": "All APIs for SalonOS. Variables: baseUrl, salon_token, admin_token, salonId, serviceId, bookingId, staffId, userId, resetToken, paymentMethodId, notificationId, targetSalonId, conversationId, customerId",
+    "name": "SalonOS - Complete API Collection v3",
+    "_postman_id": "saloon-os-v3",
+    "description": "All APIs for SalonOS. Variables: baseUrl, salon_token, admin_token, salonId, serviceId, bookingId, staffId, userId, resetToken, paymentMethodId, notificationId, targetSalonId, conversationId, customerId. Dashboard auth uses httpOnly cookies (set automatically on login). Admin auth uses Bearer token (admin_token variable).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -175,6 +175,47 @@
               "path": ["api", "auth", "register-customer"]
             },
             "description": "Step 2 of registration. Verifies the OTP sent to the email, then creates the account and returns a JWT token. Call Send Registration OTP first."
+          }
+        },
+        {
+          "name": "Get Session (me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{salon_token}}", "description": "Only needed when testing via Postman (cookie not sent). In browser, cookie is used automatically." }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Returns the current authenticated user and salon info from the httpOnly cookie (dashboard users) or Bearer token. Used for session bootstrap on page load."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "refresh"]
+            },
+            "description": "Rotates the dashboard access token (15 min) and refresh token (7 days) using the dashboard_refresh_token httpOnly cookie. No body required. Returns 401 if refresh token is missing or expired. Automatically called by the dashboard API client on 401 responses."
+          }
+        },
+        {
+          "name": "Logout (Dashboard)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Clears the dashboard_access_token and dashboard_refresh_token httpOnly cookies. No auth required. Use this to sign out dashboard users (owners, staff, customers). Admin logout is handled client-side by clearing localStorage admin_token."
           }
         }
       ]
@@ -2060,9 +2101,9 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/admin/bookings?page=1&limit=20",
+              "raw": "{{baseUrl}}/api/admin/bookings?page=1&limit=20",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "api",
@@ -2115,9 +2156,9 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/admin/bookings/{{bookingId}}",
+              "raw": "{{baseUrl}}/api/admin/bookings/{{bookingId}}",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "api",
@@ -2155,9 +2196,9 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/api/admin/bookings",
+              "raw": "{{baseUrl}}/api/admin/bookings",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "api",
@@ -2194,9 +2235,9 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/api/admin/bookings/{{bookingId}}",
+              "raw": "{{baseUrl}}/api/admin/bookings/{{bookingId}}",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "api",
@@ -2220,9 +2261,9 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/admin/bookings/{{bookingId}}",
+              "raw": "{{baseUrl}}/api/admin/bookings/{{bookingId}}",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "api",
@@ -2245,8 +2286,8 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
             "url": {
-              "raw": "{{base_url}}/api/admin/analytics?period=month",
-              "host": ["{{base_url}}"],
+              "raw": "{{baseUrl}}/api/admin/analytics?period=month",
+              "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "analytics"],
               "query": [
                 { "key": "period", "value": "month", "description": "day | week | month | year | custom" },
@@ -2264,8 +2305,8 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
             "url": {
-              "raw": "{{base_url}}/api/admin/analytics?period=custom&from=2024-01-01&to=2024-12-31",
-              "host": ["{{base_url}}"],
+              "raw": "{{baseUrl}}/api/admin/analytics?period=custom&from=2024-01-01&to=2024-12-31",
+              "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "analytics"],
               "query": [
                 { "key": "period", "value": "custom" },

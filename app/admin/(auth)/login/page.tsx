@@ -116,13 +116,9 @@ export default function AdminLoginPage() {
               Sign In to Admin Panel
             </Button>
 
-            <p className="text-center text-xs text-slate-400 pt-1">
-              No account?{" "}
-              <a
-                href="/admin/setup"
-                className="text-violet-600 hover:underline font-medium"
-              >
-                First-time setup →
+            <p className="text-center text-sm pt-1">
+              <a href="/admin/forgot-password" className="text-violet-600 hover:underline text-sm">
+                Forgot password?
               </a>
             </p>
           </form>
