@@ -1962,98 +1962,81 @@
           "request": {
             "method": "GET",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{salon_token}}"
-              },
-              {
-                "key": "X-Salon-ID",
-                "value": "{{salonId}}",
-                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
-              }
+              { "key": "Authorization", "value": "Bearer {{salon_token}}" },
+              { "key": "X-Salon-ID", "value": "{{salonId}}" }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/messages",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "messages"
-              ]
-            }
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages"]
+            },
+            "description": "Returns all conversations for the logged-in user. Each item includes unreadCount (for the caller's side), lastMessage, lastMessageAt, and populated customer/salon info."
           }
         },
         {
           "name": "Send Message (Customer→Salon)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r=pm.response.json();if(r.data&&r.data.conversationId)pm.collectionVariables.set('conversationId',r.data.conversationId);"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{salon_token}}"
-              },
-              {
-                "key": "X-Salon-ID",
-                "value": "{{salonId}}",
-                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
-              }
+              { "key": "Authorization", "value": "Bearer {{salon_token}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Salon-ID", "value": "{{salonId}}" }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/messages",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "messages"
-              ]
-            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"salonId\": \"{{targetSalonId}}\",\n  \"text\": \"Hello, I have a question about my booking.\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages"]
+            },
+            "description": "Customer sends a message to a salon. Creates the conversation automatically if it doesn't exist. Returns { message, conversationId, unreadCount }."
           }
         },
         {
           "name": "Send Message (Salon→Customer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r=pm.response.json();if(r.data&&r.data.conversationId)pm.collectionVariables.set('conversationId',r.data.conversationId);"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{salon_token}}"
-              },
-              {
-                "key": "X-Salon-ID",
-                "value": "{{salonId}}",
-                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
-              }
+              { "key": "Authorization", "value": "Bearer {{salon_token}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Salon-ID", "value": "{{salonId}}" }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/messages",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "messages"
-              ]
-            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"text\": \"Your appointment is confirmed!\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"text\": \"Your appointment is confirmed for tomorrow at 10 AM!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages"]
+            },
+            "description": "Owner/Staff sends a message to a customer. Creates the conversation automatically if it doesn't exist. Returns { message, conversationId, unreadCount }."
           }
         },
         {
@@ -2061,27 +2044,35 @@
           "request": {
             "method": "GET",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{salon_token}}"
-              },
-              {
-                "key": "X-Salon-ID",
-                "value": "{{salonId}}",
-                "description": "Identifies salon app deployment (NEXT_PUBLIC_SALON_ID). Must match JWT salonId."
-              }
+              { "key": "Authorization", "value": "Bearer {{salon_token}}" },
+              { "key": "X-Salon-ID", "value": "{{salonId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/{{conversationId}}?page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "{{conversationId}}"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "50" }
+              ]
+            },
+            "description": "Returns paginated messages sorted oldest→newest. Also resets the caller's unread count to 0. Response: { conversation, messages, pagination: { page, limit, total, hasMore } }."
+          }
+        },
+        {
+          "name": "Mark Conversation as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{salon_token}}" },
+              { "key": "X-Salon-ID", "value": "{{salonId}}" }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/messages/{{conversationId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "messages",
-                "{{conversationId}}"
-              ]
-            }
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "{{conversationId}}"]
+            },
+            "description": "Marks the caller's unread count as 0 without re-fetching the thread. Call this when the user opens the chat screen."
           }
         }
       ]
