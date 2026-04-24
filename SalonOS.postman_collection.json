@@ -1956,9 +1956,10 @@
     },
     {
       "name": "19. Messages",
+      "description": "WhatsApp-style threaded messaging. One thread per customer↔salon pair. App flow: (1) GET /api/messages → list threads, (2) POST /api/messages → start/find thread, (3) GET /api/messages/:id → load history, (4) POST /api/messages/:id → send in thread, (5) GET /api/messages/:id?after=<ts> → poll for new messages every 3-5s.",
       "item": [
         {
-          "name": "List Conversations",
+          "name": "1. List Conversations",
           "request": {
             "method": "GET",
             "header": [
@@ -1970,18 +1971,18 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "messages"]
             },
-            "description": "Returns all conversations for the logged-in user. Each item includes unreadCount (for the caller's side), lastMessage, lastMessageAt, and populated customer/salon info."
+            "description": "Returns all conversations sorted by latest message. Each item: { _id, subject, salonId { _id, name }, customerId { _id, name, phone }, lastMessage, lastMessageAt, lastMessageBy, messageCount, unreadCount, isActive }. unreadCount is the caller-side badge count."
           }
         },
         {
-          "name": "Send Message (Customer→Salon)",
+          "name": "2. Start Conversation (Customer→Salon)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const r=pm.response.json();if(r.data&&r.data.conversationId)pm.collectionVariables.set('conversationId',r.data.conversationId);"
+                  "const r=pm.response.json();if(r.data&&r.data.conversation&&r.data.conversation._id){pm.collectionVariables.set('conversationId',r.data.conversation._id);console.log('conversationId saved:',r.data.conversation._id);}"
                 ]
               }
             }
@@ -1995,7 +1996,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"salonId\": \"{{targetSalonId}}\",\n  \"text\": \"Hello, I have a question about my booking.\"\n}",
+              "raw": "{\n  \"salonId\": \"{{targetSalonId}}\",\n  \"text\": \"Hi! I'd like to know more about your services.\",\n  \"subject\": \"Service Enquiry\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -2003,18 +2004,18 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "messages"]
             },
-            "description": "Customer sends a message to a salon. Creates the conversation automatically if it doesn't exist. Returns { message, conversationId, unreadCount }."
+            "description": "Customer starts a conversation. If a thread already exists, sends into it (no duplicate threads). subject is optional. Auto-saves conversationId. Response: { conversation, message, isNewConversation }."
           }
         },
         {
-          "name": "Send Message (Salon→Customer)",
+          "name": "3. Start Conversation (Salon→Customer)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const r=pm.response.json();if(r.data&&r.data.conversationId)pm.collectionVariables.set('conversationId',r.data.conversationId);"
+                  "const r=pm.response.json();if(r.data&&r.data.conversation&&r.data.conversation._id){pm.collectionVariables.set('conversationId',r.data.conversation._id);console.log('conversationId saved:',r.data.conversation._id);}"
                 ]
               }
             }
@@ -2028,7 +2029,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"text\": \"Your appointment is confirmed for tomorrow at 10 AM!\"\n}",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"text\": \"Hello! Your appointment for tomorrow at 10 AM is confirmed.\",\n  \"subject\": \"Booking Confirmation\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -2036,11 +2037,11 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "messages"]
             },
-            "description": "Owner/Staff sends a message to a customer. Creates the conversation automatically if it doesn't exist. Returns { message, conversationId, unreadCount }."
+            "description": "Owner/Staff starts a conversation with a customer. If thread already exists, sends into it. Auto-saves conversationId. Response: { conversation, message, isNewConversation }."
           }
         },
         {
-          "name": "Get Conversation Thread",
+          "name": "4. Load Thread History",
           "request": {
             "method": "GET",
             "header": [
@@ -2056,11 +2057,52 @@
                 { "key": "limit", "value": "50" }
               ]
             },
-            "description": "Returns paginated messages sorted oldest→newest. Also resets the caller's unread count to 0. Response: { conversation, messages, pagination: { page, limit, total, hasMore } }."
+            "description": "Call when opening a chat screen to load message history. Messages sorted oldest→newest (WhatsApp order). Also resets caller unread count to 0. For older messages, increment page. Response: { conversation, messages: [...], pagination: { page, limit, total, hasMore } }."
           }
         },
         {
-          "name": "Mark Conversation as Read",
+          "name": "5. Send Message in Thread",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{salon_token}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Salon-ID", "value": "{{salonId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Sure, we have slots at 10 AM and 3 PM tomorrow.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/{{conversationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "{{conversationId}}"]
+            },
+            "description": "The main SEND action while a chat is open. APPEND the returned message to your local array — do NOT reload the thread. Response: { message: { _id, text, senderId, senderRole, createdAt }, conversation: { lastMessage, lastMessageAt, messageCount, unreadCount } }."
+          }
+        },
+        {
+          "name": "6. Poll for New Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{salon_token}}" },
+              { "key": "X-Salon-ID", "value": "{{salonId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/{{conversationId}}?after=2026-04-24T10:00:00.000Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "{{conversationId}}"],
+              "query": [
+                { "key": "after", "value": "2026-04-24T10:00:00.000Z", "description": "Set to createdAt of your last local message" }
+              ]
+            },
+            "description": "Poll every 3-5s while chat is open. Pass the createdAt of your last local message as 'after'. If hasNew=true, append the returned messages to your array. Response: { messages: [...], hasNew: boolean }. Does NOT reset unread count."
+          }
+        },
+        {
+          "name": "7. Mark Conversation as Read",
           "request": {
             "method": "PATCH",
             "header": [
@@ -2072,7 +2114,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "messages", "{{conversationId}}"]
             },
-            "description": "Marks the caller's unread count as 0 without re-fetching the thread. Call this when the user opens the chat screen."
+            "description": "Resets the caller's unread badge to 0. Call when user opens chat (lightweight, no messages returned). Response: { conversationId, unreadCount: 0 }."
           }
         }
       ]
