@@ -44,15 +44,14 @@ export async function POST(req: NextRequest) {
       email: email.toLowerCase(),
       password: hashedPassword,
       role: "admin",
-      salonId: null,
       isActive: true,
     });
 
     const token = signToken({
-      userId: String(admin._id),
+      userId: String((admin as { _id: unknown })._id),
       salonId: null,
       role: "admin",
-      email: admin.email,
+      email: (admin as { email: string }).email,
     });
 
     return successResponse(

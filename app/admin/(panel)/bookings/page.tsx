@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search, ChevronDown, Pencil, Trash2, CalendarDays, RefreshCw, Plus,
@@ -43,7 +43,7 @@ interface Booking {
 const STATUSES = ["", "pending", "confirmed", "completed", "cancelled"];
 const PAYMENT_STATUSES = ["unpaid", "paid"];
 
-export default function AdminBookingsPage() {
+function AdminBookingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -562,5 +562,13 @@ export default function AdminBookingsPage() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+export default function AdminBookingsPageWrapper() {
+  return (
+    <Suspense>
+      <AdminBookingsPage />
+    </Suspense>
   );
 }
