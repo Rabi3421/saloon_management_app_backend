@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Scissors, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { api, setToken } from "@/lib/apiClient";
+import { api } from "@/lib/apiClient";
 
 interface LoginResponse {
   data: {
@@ -32,18 +32,12 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.post<LoginResponse>("/api/auth/login", form);
-      const { token, user, salon } = res.data;
-      setToken(token);
-      localStorage.setItem("salon_user", JSON.stringify(user));
-      localStorage.setItem("salon_data", JSON.stringify(salon));
-      // Admin users should go to the admin panel
+      const { user } = res.data;
+      // Admin users must use the dedicated admin login
       if (user.role === "admin") {
-        localStorage.setItem("admin_token", token);
-        localStorage.setItem("admin_user", JSON.stringify(user));
-        router.push("/admin");
-      } else {
-        router.push("/dashboard");
+        throw new Error("Admin accounts must sign in at /admin/login");
       }
+      router.push("/dashboard");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Login failed");
     } finally {

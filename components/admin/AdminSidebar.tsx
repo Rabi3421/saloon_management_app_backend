@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -26,6 +27,12 @@ const NAV = [
 export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!localStorage.getItem("admin_token")) {
+      router.replace("/admin/login");
+    }
+  }, [router]);
 
   function handleLogout() {
     localStorage.removeItem("admin_token");

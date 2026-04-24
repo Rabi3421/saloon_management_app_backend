@@ -1,20 +1,5 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
-function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("salon_token");
-}
-
-export function setToken(token: string) {
-  localStorage.setItem("salon_token", token);
-}
-
-export function removeToken() {
-  localStorage.removeItem("salon_token");
-  localStorage.removeItem("salon_user");
-  localStorage.removeItem("salon_data");
-}
-
 interface RequestOptions {
   method?: string;
   body?: unknown;
@@ -23,7 +8,8 @@ interface RequestOptions {
 
 async function request<T>(
   endpoint: string,
-  options: RequestOptions = {}
+  options: RequestOptions = {},
+  retry = true
 ): Promise<T> {
   const { method = "GET", body, params } = options;
 
@@ -37,9 +23,6 @@ async function request<T>(
     "Content-Type": "application/json",
   };
 
-  const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
   // Attach salon identity so the backend knows which salon this frontend belongs to
   const salonId = process.env.NEXT_PUBLIC_SALON_ID;
   if (salonId) headers["X-Salon-ID"] = salonId;
@@ -48,16 +31,26 @@ async function request<T>(
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    credentials: "include",
   });
 
-  const data = await res.json();
+  if (res.status === 401 && retry && endpoint !== "/api/auth/refresh") {
+    const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+    });
 
-  if (res.status === 401) {
-    removeToken();
+    if (refreshRes.ok) {
+      return request<T>(endpoint, options, false);
+    }
+
     if (typeof window !== "undefined") {
       window.location.href = "/login";
     }
   }
+
+  const data = await res.json();
 
   if (!res.ok) {
     throw new Error(data.message || "Request failed");

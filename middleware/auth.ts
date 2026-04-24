@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { verifyToken, JwtPayload } from "@/lib/jwt";
+import { verifyAccessToken, verifyToken, JwtPayload } from "@/lib/jwt";
 import { errorResponse } from "@/lib/apiHelpers";
+import { DASHBOARD_ACCESS_COOKIE } from "@/lib/authCookies";
 
 /**
  * Extracts and verifies the Bearer token from the Authorization header.
@@ -10,15 +11,19 @@ export function authenticate(
   req: NextRequest
 ): { payload: JwtPayload } | ReturnType<typeof errorResponse> {
   const authHeader = req.headers.get("authorization");
+  const bearerToken =
+    authHeader && authHeader.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : null;
+  const cookieToken = req.cookies.get(DASHBOARD_ACCESS_COOKIE)?.value;
+  const token = bearerToken || cookieToken;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!token) {
     return errorResponse("Authorization token is missing or malformed", 401);
   }
 
-  const token = authHeader.split(" ")[1];
-
   try {
-    const payload = verifyToken(token);
+    const payload = bearerToken ? verifyToken(token) : verifyAccessToken(token);
 
     // ── Salon isolation guard ────────────────────────────────────────────────
     // Admin accounts (salonId: null) are exempt — they operate across salons.

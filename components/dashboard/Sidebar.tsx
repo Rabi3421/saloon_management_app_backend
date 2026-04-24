@@ -11,7 +11,7 @@ import {
   LogOut,
   ChevronRight,
 } from "lucide-react";
-import { removeToken } from "@/lib/apiClient";
+import { api } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -26,8 +26,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  function handleLogout() {
-    removeToken();
+  async function handleLogout() {
+    await api.post("/api/auth/logout", {});
     router.push("/login");
   }
 

@@ -52,8 +52,6 @@ export default function ProfilePage() {
       });
       setProfile(res.data);
       setSuccess("Profile updated successfully!");
-      // Update cached salon name
-      localStorage.setItem("salon_data", JSON.stringify(res.data));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {

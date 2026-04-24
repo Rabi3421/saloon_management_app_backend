@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bell, User } from "lucide-react";
+import { api } from "@/lib/apiClient";
 
 interface SalonUser {
   name: string;
@@ -18,14 +19,13 @@ export default function Header({ title }: { title: string }) {
   const [salon, setSalon] = useState<SalonData | null>(null);
 
   useEffect(() => {
-    try {
-      const u = localStorage.getItem("salon_user");
-      const s = localStorage.getItem("salon_data");
-      if (u) setUser(JSON.parse(u));
-      if (s) setSalon(JSON.parse(s));
-    } catch {
-      // ignore
-    }
+    api
+      .get<{ user: SalonUser; salon: SalonData }>("/api/auth/me")
+      .then((res) => {
+        setUser(res.user);
+        setSalon(res.salon);
+      })
+      .catch(() => {/* unauthenticated — middleware will redirect */});
   }, []);
 
   return (

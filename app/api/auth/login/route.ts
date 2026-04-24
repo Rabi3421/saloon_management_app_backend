@@ -5,6 +5,10 @@ import User from "@/models/User";
 import Salon from "@/models/Salon";
 import { signToken } from "@/lib/jwt";
 import {
+  clearDashboardAuthCookies,
+  setDashboardAuthCookies,
+} from "@/lib/authCookies";
+import {
   successResponse,
   errorResponse,
   validateRequiredFields,
@@ -57,20 +61,30 @@ export async function POST(req: NextRequest) {
 
     const salon = user.salonId ? await Salon.findById(user.salonId) : null;
 
-    const token = signToken({
+    const authPayload = {
       userId: String(user._id),
       salonId: user.salonId ? String(user.salonId) : null,
       role: user.role,
       email: user.email,
-    });
+    };
+
+    const token = signToken(authPayload);
 
     // Strip password before sending
     const userObj = user.toJSON();
 
-    return successResponse(
+    const response = successResponse(
       { token, user: userObj, salon },
       "Login successful"
     );
+
+    if (user.role !== "admin") {
+      setDashboardAuthCookies(response, authPayload);
+    } else {
+      clearDashboardAuthCookies(response);
+    }
+
+    return response;
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Internal server error";

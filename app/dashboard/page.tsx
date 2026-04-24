@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   Scissors,
@@ -45,17 +44,8 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const router = useRouter();
 
   useEffect(() => {
-    // Redirect admin users to the admin panel
-    try {
-      const user = JSON.parse(localStorage.getItem("salon_user") || "{}");
-      if (user?.role === "admin") {
-        router.replace("/admin");
-        return;
-      }
-    } catch {}
     api
       .get<{ data: StatsData }>("/api/dashboard/stats")
       .then((res) => setStats(res.data))
