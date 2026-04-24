@@ -19,6 +19,8 @@ export interface IConversation extends Document {
   unreadByCustomer: number;
   unreadBySalon: number;
   isActive: boolean;          // soft-close a thread
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const ConversationSchema = new Schema<IConversation>(

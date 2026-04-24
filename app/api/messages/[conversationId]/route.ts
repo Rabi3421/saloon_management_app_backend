@@ -161,7 +161,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
     // Update conversation summary
     conversation.lastMessage   = text;
-    conversation.lastMessageAt = newMessage.createdAt as Date;
+    conversation.lastMessageAt = new Date();
     conversation.lastMessageBy = senderRole;
     conversation.messageCount  = (conversation.messageCount || 0) + 1;
     if (senderRole === "customer") {

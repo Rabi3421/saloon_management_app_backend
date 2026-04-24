@@ -44,8 +44,6 @@ export async function GET(req: NextRequest) {
       messageCount:   c.messageCount,
       unreadCount:    isCustomer ? c.unreadByCustomer : c.unreadBySalon,
       isActive:       c.isActive,
-      createdAt:      c.createdAt,
-      updatedAt:      c.updatedAt,
     }));
 
     return successResponse(data, "Conversations fetched");
@@ -118,7 +116,7 @@ export async function POST(req: NextRequest) {
     // Update conversation summary
     const senderRole = auth.payload.role as "customer" | "owner" | "staff";
     conversation.lastMessage    = text;
-    conversation.lastMessageAt  = newMessage.createdAt as Date;
+    conversation.lastMessageAt  = new Date();
     conversation.lastMessageBy  = senderRole;
     conversation.messageCount   = (conversation.messageCount || 0) + 1;
     if (senderRole === "customer") {
