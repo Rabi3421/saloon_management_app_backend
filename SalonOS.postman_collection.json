@@ -2,7 +2,7 @@
   "info": {
     "name": "SalonOS - Complete API Collection v3",
     "_postman_id": "saloon-os-v3",
-    "description": "All APIs for SalonOS. Variables: baseUrl, salon_token, admin_token, salonId, serviceId, bookingId, staffId, userId, resetToken, paymentMethodId, notificationId, targetSalonId, conversationId, customerId. Dashboard auth uses httpOnly cookies (set automatically on login). Admin auth uses Bearer token (admin_token variable).",
+    "description": "All APIs for SalonOS. Variables: baseUrl, salon_token, admin_token, salonId, serviceId, bookingId, staffId, userId, resetToken, paymentMethodId, notificationId, targetSalonId, customerId. Dashboard auth uses httpOnly cookies (set automatically on login). Admin auth uses Bearer token (admin_token variable).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -63,11 +63,6 @@
     },
     {
       "key": "targetSalonId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "conversationId",
       "value": "",
       "type": "string"
     },
@@ -1950,178 +1945,6 @@
                 "read"
               ]
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "19. Messages (Socket.io)",
-      "description": "Real-time WhatsApp-style messaging powered by Socket.io.\n\nSocket.io endpoint: ws://localhost:3000/socket.io\nAuth: pass JWT token in handshake.auth.token\n\n── REST APIs (HTTP) ──────────────────────────────\nUse these for conversation management (list, start, history, mark read).\n\n── Socket.io Events ─────────────────────────────\nClient → Server:\n  join_conversation   { conversationId }\n  leave_conversation  { conversationId }\n  send_message        { conversationId, text }\n  mark_read           { conversationId }\n  typing              { conversationId, isTyping }\n\nServer → Client:\n  joined              { conversationId }\n  left                { conversationId }\n  new_message         { _id, conversationId, senderId, senderRole, text, isRead, createdAt, updatedAt }\n  conversation_updated{ conversationId, lastMessage, lastMessageAt, lastMessageBy, messageCount, unreadByCustomer, unreadBySalon }\n  marked_read         { conversationId, unreadCount: 0 }\n  typing              { conversationId, userId, role, isTyping }\n  error               { event, message }\n\n── App Flow ──────────────────────────────────────\n1. GET  /api/messages              → list conversation threads\n2. POST /api/messages              → create / find thread, get conversationId\n3. GET  /api/messages/:id          → load message history (opens chat screen)\n4. socket.emit('join_conversation', { conversationId }) → join room\n5. socket.emit('send_message', { conversationId, text }) → send message\n6. socket.on('new_message', msg => messages.push(msg)) → receive in real-time\n7. PATCH /api/messages/:id  OR  socket.emit('mark_read') → clear badge\n8. socket.emit('leave_conversation', ...) → when navigating away",
-      "item": [
-        {
-          "name": "1. List Conversations",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{salon_token}}" },
-              { "key": "X-Salon-ID", "value": "{{salonId}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/messages",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "messages"]
-            },
-            "description": "REST — List all conversation threads for the logged-in user, sorted by latest message.\n\nResponse per item:\n{ _id, subject, salonId { _id, name }, customerId { _id, name, phone }, lastMessage, lastMessageAt, lastMessageBy, messageCount, unreadCount (caller-side badge), isActive, createdAt, updatedAt }"
-          }
-        },
-        {
-          "name": "2. Start Conversation (Customer→Salon)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r=pm.response.json();if(r.data&&r.data.conversation&&r.data.conversation._id){pm.collectionVariables.set('conversationId',r.data.conversation._id);console.log('conversationId saved:',r.data.conversation._id);}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{salon_token}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Salon-ID", "value": "{{salonId}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"salonId\": \"{{targetSalonId}}\",\n  \"subject\": \"Service Enquiry\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/messages",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "messages"]
-            },
-            "description": "REST — Customer creates or finds an existing conversation thread with a salon.\nNo message is sent here — use Socket.io send_message after getting conversationId.\nsubject is optional. Auto-saves conversationId via test script.\n\nResponse: { conversation, isNewConversation }"
-          }
-        },
-        {
-          "name": "3. Start Conversation (Salon→Customer)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r=pm.response.json();if(r.data&&r.data.conversation&&r.data.conversation._id){pm.collectionVariables.set('conversationId',r.data.conversation._id);console.log('conversationId saved:',r.data.conversation._id);}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{salon_token}}" },
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Salon-ID", "value": "{{salonId}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"subject\": \"Booking Confirmation\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/messages",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "messages"]
-            },
-            "description": "REST — Owner/Staff creates or finds a conversation thread with a customer.\nNo message is sent here — use Socket.io send_message after getting conversationId.\nsubject is optional. Auto-saves conversationId via test script.\n\nResponse: { conversation, isNewConversation }"
-          }
-        },
-        {
-          "name": "4. Load Thread History",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{salon_token}}" },
-              { "key": "X-Salon-ID", "value": "{{salonId}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/messages/{{conversationId}}?page=1&limit=50",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "messages", "{{conversationId}}"],
-              "query": [
-                { "key": "page", "value": "1", "description": "Page number (default 1)" },
-                { "key": "limit", "value": "50", "description": "Messages per page (default 50, max 100)" }
-              ]
-            },
-            "description": "REST — Call when opening a chat screen to load past messages.\nMessages sorted oldest→newest (WhatsApp order). Also resets caller unread count to 0.\nFor older messages (scroll up), increment page.\n\nAfter calling this, emit join_conversation via Socket.io to start receiving new_message events in real-time.\n\nResponse: { conversation, messages: [...], pagination: { page, limit, total, hasMore } }"
-          }
-        },
-        {
-          "name": "5. Mark Conversation as Read (REST)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{salon_token}}" },
-              { "key": "X-Salon-ID", "value": "{{salonId}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/messages/{{conversationId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "messages", "{{conversationId}}"]
-            },
-            "description": "REST — Resets the caller's unread badge to 0. Lightweight, no messages returned.\nAlternatively use Socket.io: socket.emit('mark_read', { conversationId })\n\nResponse: { conversationId, unreadCount: 0 }"
-          }
-        },
-        {
-          "name": "6. [Socket.io] join_conversation",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}",
-              "host": ["{{baseUrl}}"]
-            },
-            "description": "Socket.io event — NOT an HTTP request. Document only.\n\nEmit after calling 'Load Thread History' to start receiving real-time messages.\n\nClient emits:\n  socket.emit('join_conversation', { conversationId: '{{conversationId}}' })\n\nServer responds with:\n  socket.on('joined', { conversationId }) ← success\n  socket.on('error',  { event, message }) ← if not authorized or not found"
-          }
-        },
-        {
-          "name": "7. [Socket.io] send_message",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}",
-              "host": ["{{baseUrl}}"]
-            },
-            "description": "Socket.io event — NOT an HTTP request. Document only.\n\nThe main SEND action while chat is open. Server persists to DB and broadcasts to all room members.\n\nClient emits:\n  socket.emit('send_message', { conversationId: '{{conversationId}}', text: 'Hello!' })\n\nAll clients in the room receive:\n  socket.on('new_message', {\n    _id, conversationId, senderId, senderRole,\n    text, isRead: false, createdAt, updatedAt\n  })\n\n  socket.on('conversation_updated', {\n    conversationId, lastMessage, lastMessageAt, lastMessageBy,\n    messageCount, unreadByCustomer, unreadBySalon\n  })\n\nAPPEND new_message to your local messages array — do NOT reload history."
-          }
-        },
-        {
-          "name": "8. [Socket.io] typing indicator",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}",
-              "host": ["{{baseUrl}}"]
-            },
-            "description": "Socket.io event — NOT an HTTP request. Document only.\n\nOptional typing indicator. Broadcast to all OTHER members of the room (not back to sender).\n\nClient emits:\n  socket.emit('typing', { conversationId: '{{conversationId}}', isTyping: true })\n  socket.emit('typing', { conversationId: '{{conversationId}}', isTyping: false })\n\nOther clients in the room receive:\n  socket.on('typing', { conversationId, userId, role, isTyping })"
-          }
-        },
-        {
-          "name": "9. [Socket.io] mark_read + leave",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}",
-              "host": ["{{baseUrl}}"]
-            },
-            "description": "Socket.io events — NOT HTTP requests. Document only.\n\nmark_read — reset caller's unread badge to 0:\n  socket.emit('mark_read', { conversationId: '{{conversationId}}' })\n  socket.on('marked_read', { conversationId, unreadCount: 0 })\n\nleave_conversation — when navigating away from chat screen:\n  socket.emit('leave_conversation', { conversationId: '{{conversationId}}' })\n  socket.on('left', { conversationId })\n\nConnection / auth setup example (React Native):\n  import { io } from 'socket.io-client';\n  const socket = io('http://localhost:3000', {\n    path: '/socket.io',\n    auth: { token: jwtToken },  // Bearer JWT\n    transports: ['websocket'],\n  });\n  socket.on('connect_error', (err) => console.error(err.message));"
           }
         }
       ]
