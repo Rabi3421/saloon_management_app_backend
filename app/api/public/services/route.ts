@@ -24,10 +24,12 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const category = searchParams.get("category");
+    const search = searchParams.get("search");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: Record<string, any> = { salonId, isActive: true };
     if (category) filter.category = category;
+    if (search) filter.name = { $regex: search, $options: "i" };
 
     const services = await Service.find(filter).sort({ category: 1, name: 1 });
 

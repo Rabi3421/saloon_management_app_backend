@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Salon from "@/models/Salon";
+import Review from "@/models/Review";
 import { successResponse, errorResponse } from "@/lib/apiHelpers";
 
 /**
@@ -19,15 +20,28 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
-    const salon = await Salon.findById(salonId).select(
-      "name ownerName email phone address plan isActive"
-    );
+    const [salon, reviewStats] = await Promise.all([
+      Salon.findById(salonId).select(
+        "name ownerName email phone address about website logo images openingHours plan isActive"
+      ),
+      Review.aggregate([
+        { $match: { salonId: new (await import("mongoose")).default.Types.ObjectId(salonId) } },
+        { $group: { _id: null, rating: { $avg: "$rating" }, reviewCount: { $sum: 1 } } },
+      ]),
+    ]);
 
     if (!salon || !salon.isActive) {
       return errorResponse("Salon not found or inactive", 404);
     }
 
-    return successResponse(salon, "Salon info fetched");
+    return successResponse(
+      {
+        ...salon.toObject(),
+        rating: reviewStats[0]?.rating ? Math.round(reviewStats[0].rating * 10) / 10 : 0,
+        reviewCount: reviewStats[0]?.reviewCount ?? 0,
+      },
+      "Salon info fetched"
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal server error";
     return errorResponse(message, 500);

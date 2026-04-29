@@ -14,6 +14,11 @@ export interface IBooking extends Document {
   staffId: mongoose.Types.ObjectId;
   serviceId: mongoose.Types.ObjectId;   // kept for single-service backward compat
   serviceIds: mongoose.Types.ObjectId[]; // multi-service support
+  promotionId?: mongoose.Types.ObjectId;
+  promotionCode?: string;
+  promotionType?: string;
+  subtotalAmount: number;
+  discountAmount: number;
   bookingDate: Date;
   timeSlot: string;
   status: BookingStatus;
@@ -51,6 +56,15 @@ const BookingSchema = new Schema<IBooking>(
         ref: "Service",
       },
     ],
+    promotionId: {
+      type: Schema.Types.ObjectId,
+      ref: "Promotion",
+      required: false,
+    },
+    promotionCode: { type: String, trim: true },
+    promotionType: { type: String, trim: true },
+    subtotalAmount: { type: Number, default: 0 },
+    discountAmount: { type: Number, default: 0 },
     bookingDate: { type: Date, required: true },
     timeSlot: { type: String, required: true, trim: true }, // e.g. "10:00 AM"
     status: {
@@ -65,8 +79,21 @@ const BookingSchema = new Schema<IBooking>(
   { timestamps: true }
 );
 
+const existingBookingModel = mongoose.models.Booking as Model<IBooking> | undefined;
+const shouldRefreshBookingModel =
+  !!existingBookingModel &&
+  ["promotionId", "promotionCode", "promotionType", "subtotalAmount", "discountAmount"].some(
+    (pathName) => !existingBookingModel.schema.path(pathName)
+  );
+
+if (shouldRefreshBookingModel) {
+  mongoose.deleteModel("Booking");
+}
+
 const Booking: Model<IBooking> =
-  mongoose.models.Booking ||
+  (shouldRefreshBookingModel
+    ? undefined
+    : (mongoose.models.Booking as Model<IBooking> | undefined)) ||
   mongoose.model<IBooking>("Booking", BookingSchema);
 
 export default Booking;

@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Booking from "@/models/Booking";
-import Notification from "@/models/Notification";
+import "@/models/Promotion";
 import { authenticate, isAuthError } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/apiHelpers";
+import { notifySalonOwners, notifyUsers } from "@/lib/notificationService";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -41,20 +42,31 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     booking.paymentStatus = "paid";
     await booking.save();
 
-    // Create a notification for the customer
-    await Notification.create({
-      userId: booking.customerId,
-      salonId: booking.salonId,
-      type: "booking",
-      title: "Payment Confirmed",
-      body: `Your payment of ₹${booking.totalAmount} has been received.`,
-      meta: { bookingId: String(booking._id) },
-    });
+    const bookingId = String(booking._id);
+
+    await Promise.all([
+      notifyUsers({
+        userIds: [String(booking.customerId)],
+        salonId: String(booking.salonId),
+        type: "booking",
+        title: "Payment confirmed",
+        body: `Your payment of ₹${booking.totalAmount} has been received.`,
+        meta: { bookingId, targetScreen: "Booking" },
+      }),
+      notifySalonOwners({
+        salonId: String(booking.salonId),
+        type: "booking",
+        title: "Booking paid",
+        body: `A booking payment of ₹${booking.totalAmount} has been received.`,
+        meta: { bookingId, targetScreen: "OwnerBookings" },
+      }),
+    ]);
 
     const populated = await Booking.findById(booking._id)
       .populate("customerId", "name email")
       .populate("serviceIds", "name price")
-      .populate("staffId", "name");
+      .populate("staffId", "name")
+      .populate("promotionId", "title code type value description terms");
 
     return successResponse(populated, "Payment recorded successfully");
   } catch (error: unknown) {

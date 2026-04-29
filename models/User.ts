@@ -2,6 +2,12 @@ import mongoose, { Document, Schema, Model } from "mongoose";
 
 export type UserRole = "owner" | "staff" | "customer" | "admin";
 
+export interface IUserDeviceToken {
+  token: string;
+  platform: "ios" | "android";
+  lastSeenAt: Date;
+}
+
 export interface IUser extends Document {
   salonId?: mongoose.Types.ObjectId; // optional for super-admin
   name: string;
@@ -10,8 +16,22 @@ export interface IUser extends Document {
   password: string;
   role: UserRole;
   isActive: boolean;
+  deviceTokens: IUserDeviceToken[];
   createdAt: Date;
 }
+
+const UserDeviceTokenSchema = new Schema<IUserDeviceToken>(
+  {
+    token: { type: String, required: true, trim: true },
+    platform: {
+      type: String,
+      enum: ["ios", "android"],
+      required: true,
+    },
+    lastSeenAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
 
 const UserSchema = new Schema<IUser>(
   {
@@ -37,9 +57,12 @@ const UserSchema = new Schema<IUser>(
       default: "customer",
     },
     isActive: { type: Boolean, default: true },
+    deviceTokens: { type: [UserDeviceTokenSchema], default: [] },
   },
   { timestamps: true }
 );
+
+UserSchema.index({ "deviceTokens.token": 1 });
 
 // Never return password in JSON responses
 UserSchema.set("toJSON", {
@@ -50,7 +73,18 @@ UserSchema.set("toJSON", {
   },
 });
 
+const existingUserModel = mongoose.models.User as Model<IUser> | undefined;
+const shouldRefreshUserModel =
+  !!existingUserModel && !existingUserModel.schema.path("deviceTokens");
+
+if (shouldRefreshUserModel) {
+  mongoose.deleteModel("User");
+}
+
 const User: Model<IUser> =
-  mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+  (shouldRefreshUserModel
+    ? undefined
+    : (mongoose.models.User as Model<IUser> | undefined)) ||
+  mongoose.model<IUser>("User", UserSchema);
 
 export default User;
