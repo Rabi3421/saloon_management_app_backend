@@ -14,6 +14,7 @@ import {
 } from "@/lib/apiHelpers";
 import Promotion from "@/models/Promotion";
 import { calculatePromotionDiscount, isPromotionActive } from "@/lib/promotions";
+import { getStaffMemberForUser } from "@/lib/staffAuth";
 import { notifySalonOwners, notifyUsers } from "@/lib/notificationService";
 
 export async function GET(req: NextRequest) {
@@ -33,6 +34,17 @@ export async function GET(req: NextRequest) {
     // Customers only see their own bookings
     if (auth.payload.role === "customer") {
       filter.customerId = auth.payload.userId;
+    } else if (auth.payload.role === "staff") {
+      const staffMember = await getStaffMemberForUser({
+        salonId: auth.payload.salonId,
+        userId: auth.payload.userId,
+      });
+
+      if (!staffMember) {
+        return errorResponse("Staff account is not linked to a staff profile", 404);
+      }
+
+      filter.staffId = staffMember._id;
     }
 
     if (status) filter.status = status;
@@ -181,6 +193,22 @@ export async function POST(req: NextRequest) {
         body: "A customer has created a new booking request.",
         meta: { bookingId, targetScreen: "OwnerBookings" },
       }),
+      ...(body.staffId
+        ? [
+            (async () => {
+              const staffMember = await (await import("@/models/Staff")).default.findById(body.staffId);
+              if (!staffMember?.userId) return;
+              await notifyUsers({
+                userIds: [String(staffMember.userId)],
+                salonId: auth.payload.salonId,
+                type: "booking",
+                title: "New booking assigned",
+                body: "A new appointment has been assigned to you.",
+                meta: { bookingId, targetScreen: "StaffBookings" },
+              });
+            })(),
+          ]
+        : []),
     ]);
 
     return successResponse(populatedBooking ?? booking, "Booking created", 201);

@@ -8,7 +8,9 @@ export interface IWorkingHours {
 
 export interface IStaff extends Document {
   salonId: mongoose.Types.ObjectId;
+  userId?: mongoose.Types.ObjectId;
   name: string;
+  email?: string;
   phone: string;
   specialization: string;
   workingHours: IWorkingHours[];
@@ -32,7 +34,18 @@ const StaffSchema = new Schema<IStaff>(
       required: true,
       index: true,
     },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+      index: true,
+    },
     name: { type: String, required: true, trim: true },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
     phone: { type: String, trim: true },
     specialization: { type: String, required: true, trim: true },
     workingHours: { type: [WorkingHoursSchema], default: [] },
@@ -41,7 +54,21 @@ const StaffSchema = new Schema<IStaff>(
   { timestamps: true }
 );
 
+StaffSchema.index({ salonId: 1, email: 1 }, { unique: true, sparse: true });
+
+const existingStaffModel = mongoose.models.Staff as Model<IStaff> | undefined;
+const shouldRefreshStaffModel =
+  !!existingStaffModel &&
+  ["userId", "email"].some((pathName) => !existingStaffModel.schema.path(pathName));
+
+if (shouldRefreshStaffModel) {
+  mongoose.deleteModel("Staff");
+}
+
 const Staff: Model<IStaff> =
-  mongoose.models.Staff || mongoose.model<IStaff>("Staff", StaffSchema);
+  (shouldRefreshStaffModel
+    ? undefined
+    : (mongoose.models.Staff as Model<IStaff> | undefined)) ||
+  mongoose.model<IStaff>("Staff", StaffSchema);
 
 export default Staff;

@@ -58,7 +58,7 @@ export default function SalonDetailPage() {
 
   // ── Add Staff modal ────────────────────────────────────────────────
   const [showAddStaff, setShowAddStaff] = useState(false);
-  const [staffForm, setStaffForm] = useState({ name: "", phone: "", specialization: "" });
+  const [staffForm, setStaffForm] = useState({ name: "", email: "", password: "", phone: "", specialization: "" });
   const [savingStaff, setSavingStaff] = useState(false);
   const [staffError, setStaffError]   = useState("");
 
@@ -113,7 +113,7 @@ export default function SalonDetailPage() {
     try {
       await adminApi.post(`/api/admin/salons/${id}/staff`, staffForm);
       setShowAddStaff(false);
-      setStaffForm({ name: "", phone: "", specialization: "" });
+      setStaffForm({ name: "", email: "", password: "", phone: "", specialization: "" });
       reload();
     } catch (e: unknown) { setStaffError(e instanceof Error ? e.message : "Error"); }
     finally { setSavingStaff(false); }
@@ -417,11 +417,13 @@ export default function SalonDetailPage() {
         <div className="space-y-4">
           {staffError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{staffError}</p>}
           <Input label="Full Name *" value={staffForm.name} onChange={(e) => setStaffForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Priya Sharma" />
+          <Input label="Login Email *" type="email" value={staffForm.email} onChange={(e) => setStaffForm((f) => ({ ...f, email: e.target.value }))} placeholder="priya@salon.com" />
+          <Input label="Temporary Password *" type="password" value={staffForm.password} onChange={(e) => setStaffForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 6 characters" />
           <Input label="Phone" value={staffForm.phone} onChange={(e) => setStaffForm((f) => ({ ...f, phone: e.target.value }))} placeholder="9876543210" />
           <Input label="Specialization *" value={staffForm.specialization} onChange={(e) => setStaffForm((f) => ({ ...f, specialization: e.target.value }))} placeholder="e.g. Hair Stylist, Makeup Artist" />
           <div className="flex justify-end gap-3 pt-1">
             <Button variant="outline" onClick={() => setShowAddStaff(false)}>Cancel</Button>
-            <Button onClick={handleAddStaff} loading={savingStaff} className="bg-violet-700 hover:bg-violet-800 focus:ring-violet-500">Add Staff</Button>
+            <Button onClick={handleAddStaff} loading={savingStaff} className="bg-violet-700 hover:bg-violet-800 focus:ring-violet-500">Create Staff Login</Button>
           </div>
         </div>
       </Modal>

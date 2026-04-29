@@ -10,8 +10,8 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
   const auth = authenticate(req);
   if (isAuthError(auth)) return auth;
 
-  if (auth.payload.role !== "owner" && auth.payload.role !== "admin") {
-    return errorResponse("Only owners can update services", 403);
+  if (!["owner", "staff", "admin"].includes(auth.payload.role)) {
+    return errorResponse("Only owners or staff can update services", 403);
   }
 
   try {
@@ -38,8 +38,8 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
   const auth = authenticate(req);
   if (isAuthError(auth)) return auth;
 
-  if (auth.payload.role !== "owner" && auth.payload.role !== "admin") {
-    return errorResponse("Only owners can delete services", 403);
+  if (!["owner", "staff", "admin"].includes(auth.payload.role)) {
+    return errorResponse("Only owners or staff can delete services", 403);
   }
 
   try {

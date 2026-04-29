@@ -8,12 +8,23 @@ import "@/models/Service";
 import "@/models/Promotion";
 import { authenticate, isAuthError } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/apiHelpers";
+import { getStaffMemberForUser } from "@/lib/staffAuth";
 import { notifySalonOwners, notifyUsers } from "@/lib/notificationService";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 const VALID_STATUSES = ["pending", "confirmed", "completed", "cancelled"];
 const CUSTOMER_ALLOWED_STATUSES = ["cancelled"];
+const VALID_PAYMENT_STATUSES = ["unpaid", "paid"];
+
+function getEntityId(value: unknown): string | null {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && value !== null && "_id" in value) {
+    return String((value as { _id: unknown })._id);
+  }
+  return String(value);
+}
 
 function getStatusNotificationCopy(status: string) {
   switch (status) {
@@ -70,6 +81,20 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
     const { id } = await params;
     const body = await req.json();
 
+    let staffMemberId: string | null = null;
+    if (auth.payload.role === "staff") {
+      const staffMember = await getStaffMemberForUser({
+        salonId: auth.payload.salonId,
+        userId: auth.payload.userId,
+      });
+
+      if (!staffMember) {
+        return errorResponse("Staff account is not linked to a staff profile", 404);
+      }
+
+      staffMemberId = String(staffMember._id);
+    }
+
     if (body.status && !VALID_STATUSES.includes(body.status)) {
       return errorResponse(
         `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`,
@@ -81,6 +106,7 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
       _id: id,
       salonId: auth.payload.salonId,
       ...(auth.payload.role === "customer" ? { customerId: auth.payload.userId } : {}),
+      ...(auth.payload.role === "staff" && staffMemberId ? { staffId: staffMemberId } : {}),
     });
 
     if (!currentBooking) return errorResponse("Booking not found", 404);
@@ -89,6 +115,8 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
     const filter =
       auth.payload.role === "customer"
         ? { _id: id, salonId: auth.payload.salonId, customerId: auth.payload.userId }
+        : auth.payload.role === "staff" && staffMemberId
+        ? { _id: id, salonId: auth.payload.salonId, staffId: staffMemberId }
         : { _id: id, salonId: auth.payload.salonId };
 
     if (
@@ -103,6 +131,13 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
       return errorResponse("Completed bookings cannot be cancelled", 409);
     }
 
+    if (body.paymentStatus && !VALID_PAYMENT_STATUSES.includes(body.paymentStatus)) {
+      return errorResponse(
+        `Invalid paymentStatus. Must be one of: ${VALID_PAYMENT_STATUSES.join(", ")}`,
+        422
+      );
+    }
+
     if (!canTransitionStatus(String(currentBooking.status), body.status)) {
       return errorResponse(
         `Cannot change booking from ${currentBooking.status} to ${body.status}`,
@@ -110,9 +145,23 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
       );
     }
 
+    const updatePayload: Record<string, unknown> = {};
+    if (body.status !== undefined) updatePayload.status = body.status;
+    if (body.notes !== undefined) updatePayload.notes = body.notes;
+
+    if (auth.payload.role !== "customer") {
+      if (body.paymentStatus !== undefined) updatePayload.paymentStatus = body.paymentStatus;
+    }
+
+    if (auth.payload.role === "owner" || auth.payload.role === "admin") {
+      if (body.timeSlot !== undefined) updatePayload.timeSlot = body.timeSlot;
+      if (body.bookingDate !== undefined) updatePayload.bookingDate = body.bookingDate;
+      if (body.staffId !== undefined) updatePayload.staffId = body.staffId;
+    }
+
     const booking = await Booking.findOneAndUpdate(
       filter,
-      { $set: body },
+      { $set: updatePayload },
       { new: true, runValidators: true }
     )
       .populate("salonId", "name address")
@@ -137,14 +186,46 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
           meta: { bookingId, status: String(body.status), targetScreen: "OwnerBookings" },
         });
       } else {
-        await notifyUsers({
-          userIds: [String(booking.customerId)],
-          salonId: auth.payload.salonId,
-          type: "booking",
-          title: statusCopy.customerTitle,
-          body: statusCopy.customerBody,
-          meta: { bookingId, status: String(body.status), targetScreen: "Booking" },
-        });
+        const customerUserId = getEntityId(booking.customerId);
+
+        if (!customerUserId) {
+          return errorResponse("Booking customer could not be resolved", 500);
+        }
+
+        const notificationTasks = [
+          notifyUsers({
+            userIds: [customerUserId],
+            salonId: auth.payload.salonId,
+            type: "booking",
+            title: statusCopy.customerTitle,
+            body: statusCopy.customerBody,
+            meta: { bookingId, status: String(body.status), targetScreen: "Booking" },
+          }),
+        ];
+
+        if (auth.payload.role === "owner" || auth.payload.role === "admin") {
+          const staffUserId = await (async () => {
+            const rawStaffId = getEntityId(booking.staffId);
+            if (!rawStaffId) return null;
+            const staffRecord = await (await import("@/models/Staff")).default.findById(rawStaffId);
+            return staffRecord?.userId ? String(staffRecord.userId) : null;
+          })();
+
+          if (staffUserId) {
+            notificationTasks.push(
+              notifyUsers({
+                userIds: [staffUserId],
+                salonId: auth.payload.salonId,
+                type: "booking",
+                title: statusCopy.ownerTitle,
+                body: statusCopy.ownerBody,
+                meta: { bookingId, status: String(body.status), targetScreen: "StaffBookings" },
+              })
+            );
+          }
+        }
+
+        await Promise.all(notificationTasks);
       }
     }
 

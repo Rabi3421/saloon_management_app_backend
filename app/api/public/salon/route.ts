@@ -3,6 +3,7 @@ import connectDB from "@/lib/mongodb";
 import Salon from "@/models/Salon";
 import Review from "@/models/Review";
 import { successResponse, errorResponse } from "@/lib/apiHelpers";
+import { geocodeSalonAddress } from "@/lib/geocoding";
 
 /**
  * GET /api/public/salon
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
 
     const [salon, reviewStats] = await Promise.all([
       Salon.findById(salonId).select(
-        "name ownerName email phone address about website logo images openingHours plan isActive"
+        "name ownerName email phone address about website logo coverImage tagline images featureBanners location openingHours plan isActive"
       ),
       Review.aggregate([
         { $match: { salonId: new (await import("mongoose")).default.Types.ObjectId(salonId) } },
@@ -32,6 +33,14 @@ export async function GET(req: NextRequest) {
 
     if (!salon || !salon.isActive) {
       return errorResponse("Salon not found or inactive", 404);
+    }
+
+    if (!salon.location && salon.address) {
+      const geocodedLocation = await geocodeSalonAddress(salon.address).catch(() => null);
+      if (geocodedLocation) {
+        salon.location = geocodedLocation;
+        await salon.save();
+      }
     }
 
     return successResponse(

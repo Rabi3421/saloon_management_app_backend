@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Store,
   Users,
+  Users2,
   CalendarDays,
   BarChart2,
   ShieldCheck,
@@ -20,6 +21,7 @@ const NAV = [
   { href: "/admin", label: "Global Overview", icon: LayoutDashboard },
   { href: "/admin/salons", label: "All Salons", icon: Store },
   { href: "/admin/users", label: "All Users", icon: Users },
+  { href: "/admin/staff", label: "Staff Management", icon: Users2 },
   { href: "/admin/bookings", label: "All Bookings", icon: CalendarDays },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
 ];

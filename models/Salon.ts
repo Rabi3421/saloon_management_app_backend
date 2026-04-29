@@ -1,5 +1,17 @@
 import mongoose, { Document, Schema, Model } from "mongoose";
 
+interface ISalonFeatureBanner {
+  title: string;
+  subtitle?: string;
+  image: string;
+  ctaLabel?: string;
+}
+
+interface ISalonLocation {
+  latitude: number;
+  longitude: number;
+}
+
 export interface ISalon extends Document {
   name: string;
   ownerName: string;
@@ -9,7 +21,11 @@ export interface ISalon extends Document {
   about?: string;
   website?: string;
   logo?: string;
+  coverImage?: string;
+  tagline?: string;
   images?: string[];
+  featureBanners?: ISalonFeatureBanner[];
+  location?: ISalonLocation;
   openingHours?: Array<{
     day: string;
     start: string;
@@ -20,6 +36,24 @@ export interface ISalon extends Document {
   isActive: boolean;
   createdAt: Date;
 }
+
+const SalonFeatureBannerSchema = new Schema<ISalonFeatureBanner>(
+  {
+    title: { type: String, required: true, trim: true },
+    subtitle: { type: String, trim: true, default: "" },
+    image: { type: String, required: true, trim: true },
+    ctaLabel: { type: String, trim: true, default: "Explore" },
+  },
+  { _id: false }
+);
+
+const SalonLocationSchema = new Schema<ISalonLocation>(
+  {
+    latitude: { type: Number, required: true },
+    longitude: { type: Number, required: true },
+  },
+  { _id: false }
+);
 
 const SalonSchema = new Schema<ISalon>(
   {
@@ -37,7 +71,11 @@ const SalonSchema = new Schema<ISalon>(
     about: { type: String, trim: true, default: "" },
     website: { type: String, trim: true, default: "" },
     logo: { type: String, trim: true, default: "" },
+    coverImage: { type: String, trim: true, default: "" },
+    tagline: { type: String, trim: true, default: "" },
     images: { type: [String], default: [] },
+    featureBanners: { type: [SalonFeatureBannerSchema], default: [] },
+    location: { type: SalonLocationSchema, default: undefined },
     openingHours: {
       type: [
         new Schema(
@@ -58,7 +96,21 @@ const SalonSchema = new Schema<ISalon>(
   { timestamps: true }
 );
 
+const existingSalonModel = mongoose.models.Salon as Model<ISalon> | undefined;
+const shouldRefreshSalonModel =
+  !!existingSalonModel &&
+  ["coverImage", "tagline", "featureBanners", "location"].some(
+    (pathName) => !existingSalonModel.schema.path(pathName)
+  );
+
+if (shouldRefreshSalonModel) {
+  mongoose.deleteModel("Salon");
+}
+
 const Salon: Model<ISalon> =
-  mongoose.models.Salon || mongoose.model<ISalon>("Salon", SalonSchema);
+  (shouldRefreshSalonModel
+    ? undefined
+    : (mongoose.models.Salon as Model<ISalon> | undefined)) ||
+  mongoose.model<ISalon>("Salon", SalonSchema);
 
 export default Salon;

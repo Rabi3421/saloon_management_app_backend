@@ -30,8 +30,8 @@ export async function POST(req: NextRequest) {
   const auth = authenticate(req);
   if (isAuthError(auth)) return auth;
 
-  if (auth.payload.role !== "owner" && auth.payload.role !== "admin") {
-    return errorResponse("Only owners can add services", 403);
+  if (!["owner", "staff", "admin"].includes(auth.payload.role)) {
+    return errorResponse("Only owners or staff can add services", 403);
   }
 
   try {
