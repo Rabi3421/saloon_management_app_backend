@@ -16,6 +16,19 @@ import Promotion from "@/models/Promotion";
 import { calculatePromotionDiscount, isPromotionActive } from "@/lib/promotions";
 import { getStaffMemberForUser } from "@/lib/staffAuth";
 import { notifySalonOwners, notifyUsers } from "@/lib/notificationService";
+import { emitToSalon, emitToUser } from '@/lib/socket';
+
+function computeScheduledAt(bookingDate: Date, timeSlot: string): Date | null {
+  try {
+    // Try to parse timeSlot like "11:00 AM" or "15:30"
+    const datePart = bookingDate.toISOString().slice(0, 10);
+    const parsed = new Date(`${datePart} ${timeSlot}`);
+    if (isNaN(parsed.getTime())) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
 
 export async function GET(req: NextRequest) {
   const auth = authenticate(req);
@@ -146,6 +159,21 @@ export async function POST(req: NextRequest) {
 
     const totalAmount = Math.max(0, subtotalAmount - discountAmount);
 
+    // Prevent double-booking: check if same staff + date + timeSlot already occupied
+    const start = new Date(body.bookingDate);
+    const end = new Date(body.bookingDate);
+    end.setDate(end.getDate() + 1);
+    const conflict = await Booking.findOne({
+      salonId: auth.payload.salonId,
+      staffId: body.staffId,
+      bookingDate: { $gte: start, $lt: end },
+      timeSlot: body.timeSlot,
+      status: { $in: ['pending', 'confirmed', 'rescheduled', 'started'] },
+    });
+    if (conflict) {
+      return errorResponse('Selected time slot is no longer available', 409);
+    }
+
     const booking = await Booking.create({
       salonId: auth.payload.salonId!,
       customerId,
@@ -162,6 +190,14 @@ export async function POST(req: NextRequest) {
       notes: body.notes,
       totalAmount,
     });
+
+    // Set approval deadline (1 hour after creation) and scheduledAt if parseable
+    const approvalDeadline = new Date(Date.now() + 60 * 60 * 1000);
+    const scheduledAt = computeScheduledAt(new Date(body.bookingDate), body.timeSlot);
+
+    booking.approvalDeadline = approvalDeadline;
+    if (scheduledAt) booking.scheduledAt = scheduledAt;
+    await booking.save();
 
     const populatedBooking = await Booking.findById(booking._id)
       .populate("salonId", "name address")
@@ -210,6 +246,17 @@ export async function POST(req: NextRequest) {
           ]
         : []),
     ]);
+
+      // Emit realtime event to salon room and to specific staff user if available
+      try {
+        emitToSalon(auth.payload.salonId, 'booking:created', populatedBooking ?? booking);
+        if (body.staffId) {
+          const staffMember = await (await import("@/models/Staff")).default.findById(body.staffId);
+          if (staffMember?.userId) emitToUser(String(staffMember.userId), 'booking:created', populatedBooking ?? booking);
+        }
+      } catch (e) {
+        // swallow socket emit errors
+      }
 
     return successResponse(populatedBooking ?? booking, "Booking created", 201);
   } catch (error: unknown) {

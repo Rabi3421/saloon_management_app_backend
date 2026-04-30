@@ -3,8 +3,10 @@ import mongoose, { Document, Schema, Model } from "mongoose";
 export type BookingStatus =
   | "pending"
   | "confirmed"
+  | "started"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  | "rescheduled";
 
 export type PaymentStatus = "unpaid" | "paid";
 
@@ -22,6 +24,15 @@ export interface IBooking extends Document {
   bookingDate: Date;
   timeSlot: string;
   status: BookingStatus;
+  // lifecycle timestamps
+  approvalDeadline?: Date;
+  approvedAt?: Date;
+  autoApproved?: boolean;
+  scheduledAt?: Date;
+  startedAt?: Date;
+  completedAt?: Date;
+  rescheduledTo?: Date;
+  reminderSent?: boolean;
   notes?: string;
   totalAmount: number;
   paymentStatus: PaymentStatus;
@@ -69,9 +80,17 @@ const BookingSchema = new Schema<IBooking>(
     timeSlot: { type: String, required: true, trim: true }, // e.g. "10:00 AM"
     status: {
       type: String,
-      enum: ["pending", "confirmed", "completed", "cancelled"],
+      enum: ["pending", "confirmed", "started", "completed", "cancelled", "rescheduled"],
       default: "pending",
     },
+    approvalDeadline: { type: Date },
+    approvedAt: { type: Date },
+    autoApproved: { type: Boolean, default: false },
+    scheduledAt: { type: Date },
+    startedAt: { type: Date },
+    completedAt: { type: Date },
+    rescheduledTo: { type: Date },
+    reminderSent: { type: Boolean, default: false },
     notes: { type: String, trim: true },
     totalAmount: { type: Number, default: 0 },
     paymentStatus: { type: String, enum: ["unpaid", "paid"], default: "unpaid" },

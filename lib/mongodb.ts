@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import { startBookingScheduler } from './bookingScheduler';
+import { startSocketServer } from './socket';
 
 const MONGODB_URI = process.env.MONGODB_URI as string;
 
@@ -33,6 +35,18 @@ async function connectDB(): Promise<typeof mongoose> {
 
   try {
     cached.conn = await cached.promise;
+    // start background booking scheduler once per server process
+    try {
+      startBookingScheduler().catch(() => {});
+    } catch (e) {
+      // ignore
+    }
+    // start socket server (separate port) once per process
+    try {
+      startSocketServer().catch(() => {});
+    } catch (e) {
+      // ignore
+    }
   } catch (error) {
     cached.promise = null;
     throw error;

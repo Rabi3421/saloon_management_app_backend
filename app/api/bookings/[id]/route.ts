@@ -10,10 +10,11 @@ import { authenticate, isAuthError } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/apiHelpers";
 import { getStaffMemberForUser } from "@/lib/staffAuth";
 import { notifySalonOwners, notifyUsers } from "@/lib/notificationService";
+import { emitToSalon, emitToUser } from '@/lib/socket';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-const VALID_STATUSES = ["pending", "confirmed", "completed", "cancelled"];
+const VALID_STATUSES = ["pending", "confirmed", "started", "completed", "cancelled", "rescheduled"];
 const CUSTOMER_ALLOWED_STATUSES = ["cancelled"];
 const VALID_PAYMENT_STATUSES = ["unpaid", "paid"];
 
@@ -59,12 +60,25 @@ function getStatusNotificationCopy(status: string) {
   }
 }
 
+function computeScheduledAt(bookingDate: Date | string, timeSlot: string): Date | null {
+  try {
+    const dateObj = typeof bookingDate === 'string' ? new Date(bookingDate) : bookingDate;
+    const datePart = dateObj.toISOString().slice(0, 10);
+    const parsed = new Date(`${datePart} ${timeSlot}`);
+    if (isNaN(parsed.getTime())) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
 function canTransitionStatus(currentStatus: string, nextStatus?: string): boolean {
   if (!nextStatus || currentStatus === nextStatus) return true;
 
   const allowedTransitions: Record<string, string[]> = {
-    pending: ["confirmed", "cancelled"],
-    confirmed: ["completed", "cancelled"],
+    pending: ["confirmed", "cancelled", "rescheduled"],
+    confirmed: ["completed", "cancelled", "rescheduled"],
+    rescheduled: ["confirmed", "completed", "cancelled"],
     completed: [],
     cancelled: [],
   };
@@ -159,6 +173,14 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
       if (body.staffId !== undefined) updatePayload.staffId = body.staffId;
     }
 
+    // If bookingDate/timeSlot updated, recompute scheduledAt
+    if ((body.timeSlot !== undefined || body.bookingDate !== undefined) && (body.timeSlot || body.bookingDate)) {
+      const bookingDateVal = body.bookingDate !== undefined ? body.bookingDate : currentBooking.bookingDate;
+      const timeSlotVal = body.timeSlot !== undefined ? body.timeSlot : currentBooking.timeSlot;
+      const scheduledAt = computeScheduledAt(bookingDateVal as Date, timeSlotVal as string);
+      if (scheduledAt) updatePayload.scheduledAt = scheduledAt;
+    }
+
     const booking = await Booking.findOneAndUpdate(
       filter,
       { $set: updatePayload },
@@ -176,6 +198,29 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
     if (body.status && body.status !== String(currentBooking.status)) {
       const bookingId = String(booking._id);
       const statusCopy = getStatusNotificationCopy(String(body.status));
+
+      // set lifecycle timestamps
+      if (String(body.status) === 'confirmed') {
+        booking.approvedAt = booking.approvedAt || new Date();
+        booking.autoApproved = booking.autoApproved || false;
+      }
+      if (String(body.status) === 'started') {
+        booking.startedAt = booking.startedAt || new Date();
+      }
+      if (String(body.status) === 'completed') {
+        booking.completedAt = booking.completedAt || new Date();
+      }
+      if (String(body.status) === 'rescheduled' && body.rescheduledTo) {
+        booking.rescheduledTo = new Date(body.rescheduledTo);
+        booking.scheduledAt = booking.rescheduledTo;
+      }
+
+      // persist any lifecycle timestamp changes made above
+      try {
+        await booking.save();
+      } catch (e) {
+        // ignore save errors for timestamps, main update already applied
+      }
 
       if (auth.payload.role === "customer") {
         await notifySalonOwners({
@@ -226,6 +271,20 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
         }
 
         await Promise.all(notificationTasks);
+      }
+
+      // Emit realtime update
+      try {
+        emitToSalon(auth.payload.salonId, 'booking:updated', booking);
+        const customerUserId = getEntityId(booking.customerId);
+        if (customerUserId) emitToUser(customerUserId, 'booking:updated', booking);
+        const rawStaffId = getEntityId(booking.staffId);
+        if (rawStaffId) {
+          const staffRecord = await (await import('@/models/Staff')).default.findById(rawStaffId);
+          if (staffRecord?.userId) emitToUser(String(staffRecord.userId), 'booking:updated', booking);
+        }
+      } catch (e) {
+        // ignore emit errors
       }
     }
 
